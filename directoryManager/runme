@@ -1,0 +1,29 @@
+ant clean
+out=$(asadmin list-applications)
+localip=$(ifconfig | grep -A 1 enp0s20u2 | grep inet | awk '{print $2}')
+if [ $? -ne 0 ] ;then
+echo -e "Domain not started, starting domain...\n\n"
+asadmin start-domain domain1
+echo -e "\n\nDomain started, starting ANT procedure...\n\n"
+fi
+ant undeploy
+echo -e "\n\n======================================================\nYour ip is=$localip"
+echo -e "Enter remote ip address:"
+read remoteip
+var=0
+echo "Waiting the other server to perform wsimport..."
+while [ $var -eq 0 ] ; do
+{
+var=$(timeout 1 telnet $remoteip 9001 | grep Connected | wc -l) 
+}&>/dev/null
+sleep 2
+done
+echo "Attempting connection to  http://${remoteip}:9001/MMWsrv?wsdl to perform wsimport"
+sleep 1
+wsimport -verbose -s src -keep http://${remoteip}:9001/MMWsrv?wsdl
+ant build
+ant deploy
+echo -e "\n\n\n\n***************** Starting webservices with ip $localip <------\n\n"
+gnome-terminal -e "java client.JavaClient"
+java dmws.DMWSserver $localip
+#ant clean

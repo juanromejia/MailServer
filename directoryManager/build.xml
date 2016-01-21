@@ -1,0 +1,124 @@
+<project name="MyProject" default="all" basedir=".">
+    <description>
+        A simple build script.
+    </description>
+  <!-- set global properties for this build -->
+  <!-- set glassfish.home to point to glassfish installation  -->  
+  <property environment="env"/>
+  <property name="glassfish.home" value="${env.GLASSFISH_HOME}"/>
+   <property name="wsdlurl" value="http://localhost:9000/MMWsrv?wsdl"/>
+
+  <property name="entity" value="entity"/>
+  <property name="ejb" value="ejb"/>
+  <property name="client" value="client"/>
+  <target name="run" depends="all"/>
+  <target name="init">
+    <!-- Create the build directory structure -->
+    <mkdir dir="${entity}"/>
+    <mkdir dir="${ejb}"/>
+    <mkdir dir="${client}"/>
+    <mkdir dir="dmws"/>
+  </target>
+
+  <target name="all">
+    <antcall target="clean"/>
+    <antcall target="build"/>
+    <antcall target="deploy"/>
+    <antcall target="undeploy"/>
+  </target>
+
+  <target name="build" description="build" depends="init">
+    <antcall target="build-entity"/>
+    <antcall target="build-ejb"/>
+    <antcall target="build-client"/>
+    <antcall target="build-dmws"/>
+    <antcall target="build-jar"/>
+  </target>
+
+  <target name="build-entity"
+        description="Build entity beans" >
+    <javac classpath="${glassfish.home}/lib/javaee.jar" 
+           srcdir="src/entity"
+           destdir="."
+           includes="User.java"/>
+  </target>
+
+  <target name="build-mmws"
+        description="Build mmws jar">
+    <javac classpath="${glassfish.home}/lib/javaee.jar" 
+           srcdir="src/mmws"
+           destdir="."/>
+  </target>
+
+  <target name="build-dmws"
+        description="Build dmws jar">
+    <javac classpath="${glassfish.home}/lib/javaee.jar" 
+           srcdir="src/dmws"
+           destdir="."/>
+  </target>
+
+  <target name="build-ejb"
+        description="Build ejb jar">
+    <javac classpath="${glassfish.home}/lib/javaee.jar:./entities.jar:mmws/" 
+           srcdir="src/ejb"
+           destdir="."
+           includes="DMBean.java,DMLI.java,DMMMBean.java,DMRMI.java"/>
+  </target>
+
+  <target name="build-client" 
+        description="Build client jar" >
+    <javac classpath="${glassfish.home}/lib/javaee.jar" 
+           srcdir="src/client"
+           destdir="."
+           includes="JavaClient.java, JavaClientErase.java, JavaClientInteractive.java"/>
+  </target>
+  
+  <target name="build-jar" 
+        description="Build jar archive" >
+    <jar destfile="directoryManager.jar"
+         basedir="."
+	 includes="META-INF/persistence.xml,client/,ejb/,entity/,mmws/,dmws/"/>
+  </target>
+
+
+  <target name="deploy" 
+          description="deploy">
+    <exec executable="${glassfish.home}/bin/asadmin" 
+          failonerror="true" 
+          vmlauncher="false">
+      <arg line="deploy --retrieve . directoryManager.jar"/>
+    </exec>
+  </target>
+
+  <target name="undeploy" 
+          description="undeploy">
+    <exec executable="${glassfish.home}/bin/asadmin" 
+          failonerror="true" 
+          vmlauncher="false">
+      <arg line="undeploy directoryManager"/>
+    </exec>
+  </target>
+
+  <target name="clean" 
+          description="clean up" >
+    <delete file="directoryManager.jar"/>
+    <delete dir="${entity}"/>
+    <delete dir="${ejb}"/>
+    <delete dir="${client}"/>
+    <delete dir="dmws"/>    
+  </target>
+
+  <target depends="init" name="wsimport">
+          <exec executable="${wsimport-cmd}">  
+              <arg value="-verbose"/>   
+              <arg value="-s"/>   
+              <arg value="src"/>   
+              <!-- Keep generated source files. -->   
+              <arg value="-keep"/>     
+              <!-- URL du wsdl -->
+              <arg value="${wsdlurl}" />     
+          </exec>   
+
+  </target>
+
+</project>
